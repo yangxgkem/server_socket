@@ -1,9 +1,9 @@
 #include "server_socket.h"
 #include "socket_server.h"
-#include "server_server.h"
 
 #include <assert.h>
 #include <stdlib.h>
+#include <stdio.h>
 #include <string.h>
 #include <stdbool.h>
 
@@ -48,8 +48,12 @@ forward_message(int type, bool padding, struct socket_message * result) {
 		sm->buffer = result->data;
 	}
 
-	free(sm->buffer);
-	free(sm);
+	if (socket_checkdata((uint32_t)result->opaque, sm)) {
+		// todo: report somewhere to close socket
+		// don't call server_socket_close here (It will block mainloop)
+		free(sm->buffer);
+		free(sm);
+	}
 }
 
 int 
@@ -78,7 +82,7 @@ server_socket_poll() {
 		forward_message(SERVER_SOCKET_TYPE_ACCEPT, true, &result);
 		break;
 	default:
-		server_error(NULL, "Unknown socket message type %d.",type);
+		printf("Unknown socket message type %d.\n",type);
 		return -1;
 	}
 	if (more) {
@@ -91,7 +95,7 @@ int
 server_socket_send(uint32_t source, int id, void *buffer, int sz) {
 	int64_t wsz = socket_server_send(SOCKET_SERVER, id, buffer, sz);
 	if (wsz < 0) {
-		server_free(buffer);
+		free(buffer);
 		return -1;
 	} else if (wsz > 1024 * 1024) {
 		int kb4 = wsz / 1024 / 4;

@@ -33,4 +33,6 @@ void server_socket_close(uint32_t source, int id);
 void server_socket_start(uint32_t source, int id);
 void server_socket_nodelay(uint32_t source, int id);
 
+int socket_checkdata(uint32_t source, struct server_socket_message * message);
+
 #endif

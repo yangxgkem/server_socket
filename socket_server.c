@@ -349,7 +349,8 @@ open_socket(struct socket_server *ss, struct request_open * request, struct sock
 		}
 		socket_keepalive(sock);
 		sp_nonblocking(sock);//将句柄设置为非阻塞
-		//连接服务器,由于句柄设置为非阻塞,所以返回结果不一定连接成功
+		//连接服务器,由于句柄设置为非阻塞,有可能出现连接成功，但返回 EINPROGRESS 错误。可以man connect EINPROGRESS 查看文档说明
+		//我们使用epoll监听下句柄是否可写来判定，如果可写那就证明是连接服务器成功的。
 		status = connect(sock, ai_ptr->ai_addr, ai_ptr->ai_addrlen);
 		if (status != 0 && errno != EINPROGRESS) {
 			close(sock);
@@ -382,7 +383,7 @@ open_socket(struct socket_server *ss, struct request_open * request, struct sock
 		return SOCKET_OPEN;
 	} else {
 		ns->type = SOCKET_TYPE_CONNECTING;
-		//由于句柄设置为非阻塞,上面连接服务器暂未成功,则此句柄还无法进行写操作。所以在此处简体可写,
+		//由于句柄设置为非阻塞,上面连接服务器暂未成功,则此句柄还无法进行写操作。所以在此处监听可写,
 		//一旦句柄可写,则说明此句柄连接服务器成功
 		sp_write(ss->event_fd, ns->fd, ns, true);
 	}
